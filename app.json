@@ -16,6 +16,13 @@
       ]
     ],
     "name": "expo-passkey-poc",
-    "slug": "expo-passkey-poc"
+    "slug": "expo-passkey-poc",
+    "android": {
+      "package": "com.paxx.expopasskeypoc"
+    },
+    "ios": {
+      "bundleIdentifier": "com.paxx.expopasskeypoc",
+      "appleTeamId": "6DNPZ54Z8L"
+    }
   }
 }

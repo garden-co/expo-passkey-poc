@@ -1,0 +1,16 @@
+{
+  "name": "express",
+  "version": "1.0.2",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "pax-k <hi@kpax.gg> (https://github.com/pax-k)",
+  "license": "SEE LICENSE IN LICENSE",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

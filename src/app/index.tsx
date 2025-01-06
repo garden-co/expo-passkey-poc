@@ -1,95 +1,128 @@
-import { Link } from "expo-router";
-import React from "react";
-import { Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useState } from 'react';
+import { View, Button, Text, SafeAreaView, ScrollView } from 'react-native';
+import { Passkey } from 'react-native-passkey';
+import { btoa, atob } from 'react-native-quick-base64'
 
-export default function Page() {
+const ASSOCIATED_DOMAIN = '8d36-62-217-235-172.ngrok-free.app'
+
+export default function App() {
+  const [log, setLog] = useState<string[]>([]);
+  const [isSupported, setIsSupported] = useState<boolean | null>(null);
+
+  const addLog = (message: string) => {
+    setLog(prev => [...prev, `${new Date().toISOString()}: ${message}`]);
+  };
+
+  // Test bytes we want to store and retrieve
+  const TEST_BYTES = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+  const checkSupport = async () => {
+    const supported = Passkey.isSupported();
+    setIsSupported(supported);
+    addLog(`Passkey support: ${supported}`);
+  };
+
+  const createPasskey = async () => {
+    try {
+      // Convert our test bytes to base64url string
+      const userIdBase64 = btoa(String.fromCharCode(...TEST_BYTES));
+      
+      // Create challenge bytes
+      const challenge = new Uint8Array([0, 1, 2]);
+      const challengeBase64 = btoa(String.fromCharCode(...challenge));
+
+      addLog('Creating passkey...');
+      addLog(`Original bytes: ${TEST_BYTES.join(',')}`);
+      addLog(`Encoded userId: ${userIdBase64}`);
+
+      const result = await Passkey.createPlatformKey({
+        challenge: challengeBase64,
+        rp: {
+          name: 'Passkey Test App',
+          id: ASSOCIATED_DOMAIN,
+        },
+        user: {
+          id: userIdBase64,
+          name: 'test_user',
+          displayName: 'Test User',
+        },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          requireResidentKey: true,
+          residentKey: 'required',
+        },
+        timeout: 60000,
+        attestation: 'none',
+      });
+
+      addLog('Passkey created successfully');
+      addLog(JSON.stringify(result, null, 2));
+    } catch (error) {
+      console.log(JSON.stringify(error, null, 2));
+      addLog(`Error creating passkey: ${JSON.stringify(error, null, 2)}`);
+    }
+  };
+
+  const getPasskey = async () => {
+    try {
+      // Create challenge bytes (same as creation)
+      const challenge = new Uint8Array([0, 1, 2]);
+      const challengeBase64 = btoa(String.fromCharCode(...challenge));
+
+      addLog('Getting passkey...');
+
+      const result = await Passkey.getPlatformKey({
+        challenge: challengeBase64,
+        rpId: ASSOCIATED_DOMAIN,
+        allowCredentials: [], // Empty for discoverable credentials
+        timeout: 60000,
+      });
+
+      addLog('Passkey retrieved successfully');
+      addLog(JSON.stringify(result, null, 2));
+
+      // Try to decode the userHandle to verify our bytes
+      if (result.response.userHandle) {
+        const decoded = atob(result.response.userHandle);
+        const decodedBytes = new Uint8Array([...decoded].map(c => c.charCodeAt(0)));
+        addLog(`Retrieved bytes: ${decodedBytes.join(',')}`);
+        
+        // Verify if bytes match
+        const match = TEST_BYTES.every((byte, i) => byte === decodedBytes[i]);
+        addLog(`Bytes match: ${match}`);
+      } else {
+        addLog('No userHandle in response');
+      }
+    } catch (error) {
+      addLog(`Error getting passkey: ${error}`);
+    }
+  };
+
   return (
-    <View className="flex flex-1">
-      <Header />
-      <Content />
-      <Footer />
-    </View>
-  );
-}
-
-function Content() {
-  return (
-    <View className="flex-1">
-      <View className="py-12 md:py-24 lg:py-32 xl:py-48">
-        <View className="px-4 md:px-6">
-          <View className="flex flex-col items-center gap-4 text-center">
-            <Text
-              role="heading"
-              className="text-3xl text-center native:text-5xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl"
-            >
-              Welcome to Project ACME
-            </Text>
-            <Text className="mx-auto max-w-[700px] text-lg text-center text-gray-500 md:text-xl dark:text-gray-400">
-              Discover and collaborate on acme. Explore our services now.
-            </Text>
-
-            <View className="gap-4">
-              <Link
-                suppressHighlighting
-                className="flex h-9 items-center justify-center overflow-hidden rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-gray-50 web:shadow ios:shadow transition-colors hover:bg-gray-900/90 active:bg-gray-400/90 web:focus-visible:outline-none web:focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-50/90 dark:focus-visible:ring-gray-300"
-                href="/"
-              >
-                Explore
-              </Link>
-            </View>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function Header() {
-  const { top } = useSafeAreaInsets();
-  return (
-    <View style={{ paddingTop: top }}>
-      <View className="px-4 lg:px-6 h-14 flex items-center flex-row justify-between ">
-        <Link className="font-bold flex-1 items-center justify-center" href="/">
-          ACME
-        </Link>
-        <View className="flex flex-row gap-4 sm:gap-6">
-          <Link
-            className="text-md font-medium hover:underline web:underline-offset-4"
-            href="/"
-          >
-            About
-          </Link>
-          <Link
-            className="text-md font-medium hover:underline web:underline-offset-4"
-            href="/"
-          >
-            Product
-          </Link>
-          <Link
-            className="text-md font-medium hover:underline web:underline-offset-4"
-            href="/"
-          >
-            Pricing
-          </Link>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function Footer() {
-  const { bottom } = useSafeAreaInsets();
-  return (
-    <View
-      className="flex shrink-0 bg-gray-100 native:hidden"
-      style={{ paddingBottom: bottom }}
-    >
-      <View className="py-6 flex-1 items-start px-4 md:px-6 ">
-        <Text className={"text-center text-gray-700"}>
-          © {new Date().getFullYear()} Me
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={{ padding: 20 }}>
+        <Text style={{ fontSize: 20, marginBottom: 20 }}>Passkey POC</Text>
+        <Button title="Check Support" onPress={checkSupport} />
+        <Text style={{ marginVertical: 10 }}>
+          Supported: {isSupported === null ? 'Unknown' : String(isSupported)}
         </Text>
+        <Button title="Create Passkey" onPress={createPasskey} />
+        <View style={{ height: 10 }} />
+        <Button title="Get Passkey" onPress={getPasskey} />
+        <ScrollView 
+          style={{ 
+            marginTop: 20, 
+            padding: 10, 
+            backgroundColor: '#f0f0f0', 
+            maxHeight: 400 
+          }}
+        >
+          {log.map((entry, i) => (
+            <Text key={i} style={{ marginBottom: 5 }}>{entry}</Text>
+          ))}
+        </ScrollView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
